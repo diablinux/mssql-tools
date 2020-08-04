@@ -1,0 +1,45 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: mssql-jobs-sp
+  namespace: mssql-jobs
+spec:
+  schedule: "0 1 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  startingDeadlineSeconds: 500
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: mssql-jobs-sp
+              image: mcr.microsoft.com/mssql-tools
+              command:
+                [
+                  "/opt/mssql-tools/bin/sqlcmd",
+                  "-S",
+                  "server.database.windows.net",
+                  "-d",
+                  "DB_Name",
+                  "-U",
+                  "$(DB_USER)",
+                  "-P",
+                  "$(DB_PASS)",
+                  "-I",
+                  "-Q",
+                  "exec | query",
+                ]
+              env:
+                - name: DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: mssql-jobs-secret
+                      key: username
+                - name: DB_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: mssql-jobs-secret
+                      key: password
+          restartPolicy: Never
